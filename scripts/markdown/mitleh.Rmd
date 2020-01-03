@@ -1,0 +1,323 @@
+---
+title: "mittermeieri-lehilahytsara exploration"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+suppressMessages(library(knitr))
+suppressMessages(library(here))
+
+opts_chunk$set(
+  echo = FALSE,
+  include = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.path = here('figures/markdown/'),
+  dev = "svg" # output file in SVG format
+  ) 
+
+#R -e "markdown::markdownToHTML('mitlehi.Rmd', 'mittlehi.html')"
+
+library(tidyverse)
+library(vcfR) # vcf handling
+library(gdsfmt) # vcf handling
+library(SNPRelate) # vcf handling
+library(sf) # handling geographical data
+library(rnaturalearth) # base map
+library(ggspatial) # scale bar
+library(osmdata) # OSM coastline
+library(osmplotr) # get_bbox()
+library(patchwork) # plot placement
+library(cowplot) # plot placement
+#library(raster) # plot placement
+library(ggrepel) # repelling labels in plots
+library(ggnewscale) # multiple color/fill scales in plots
+library(ggforce) # group labels in plots
+```
+
+```{r setup_metadata}
+## Variables:
+setID <- 'mitleh.nooutgroup.mac3.FS6'
+focal_sp <- c('mmit', 'mleh')
+
+## Input files:
+infile_vcf <- here('seqdata/vcf/stacks', paste0(setID, '.vcf.gz'))
+infile_lookup <- here('metadata/radseq_metadata_link/lookup_IDshort.txt')
+infile_pops <- here('metadata/lemurs_metadata_link/lookup/sites_pops.txt')
+infile_sites <- here('metadata/lemurs_metadata_link/lookup/sites_gps.txt')
+infile_cols <- here('metadata/lemurs_metadata_link/lookup/colors.txt')
+
+## Output files:
+file_snpgds <- here('analyses/PCA/gds_files/', paste0(setID, '.gds'))
+
+## Check VCF to get individuals that passed filtering:
+if(!file.exists(file_snpgds)) snpgdsVCF2GDS(infile_vcf, file_snpgds,
+                                            method = "biallelic.only")
+snps <- snpgdsOpen(file_snpgds)
+inds_pass <- read.gdsn(index.gdsn(snps, "sample.id"))
+
+## Metadata files:
+lookup_raw <- read.delim(infile_lookup, as.is = TRUE) %>%
+  dplyr::filter(species.short %in% focal_sp) %>%
+  dplyr::select(ID, Sample_ID, species, species.short, site) %>%
+  dplyr::rename(sp = species.short)
+
+sites_raw <- read.delim(infile_sites, as.is = TRUE) %>%
+  dplyr::filter(sp %in% focal_sp) %>%
+  dplyr::select(site, lat, lon, sp)
+
+pops <- read.delim(infile_pops, as.is = TRUE) %>%
+  dplyr::filter(sp %in% focal_sp) %>%
+  dplyr::mutate(pop2 = ifelse(is.na(pop2), sp, pop2)) %>%
+  dplyr::select(site, site_short, site_lump, pop2)
+
+cols <- read.delim(infile_cols, as.is = TRUE) %>%
+  dplyr::select(popID_short, col)
+
+## Popgroup labels and factor orders:
+pop2_order <- c('mmit', 'leh_N', 'leh_hi', 'leh_S')
+pop2_labs <- c('mittermeieri', 'lehi: north', 'lehi: high', 'lehi: south')
+pops <- pops %>%
+  mutate(pop2 = fct_relevel(pop2, pop2_order),
+         pop_group = as.factor(
+           recode(pop2,
+                  mmit = "mittermeieri", leh_N = "lehi: north",
+                  leh_hi = 'lehi: high', leh_S = 'lehi: south')
+         ))
+
+## Merge metadata files:
+lookup <- lookup_raw %>%
+  merge(., pops, by = 'site', all.x = TRUE) %>%
+  merge(., cols, by.x = 'pop2', by.y = 'popID_short', all.x = TRUE) %>%
+  dplyr::rename(col_pop2 = col) %>%
+  merge(., cols, by.x = 'sp', by.y = 'popID_short', all.x = TRUE) %>%
+  dplyr::rename(col_sp = col) %>%
+  dplyr::mutate(filtering = ifelse(ID %in% inds_pass, 'pass', 'fail')) %>%
+  dplyr::select(ID, Sample_ID, sp, site_short, site_lump,
+                pop2, pop_group, col_pop2, col_sp, filtering)
+
+sites <- sites_raw %>%
+  merge(., pops, by = 'site', all.x = TRUE) %>%
+  merge(., cols, by.x = 'pop2', by.y = 'popID_short', all.x = TRUE) %>%
+  dplyr::select(site, site_short, site_lump, sp, pop2, pop_group, col) %>%
+  dplyr::arrange(pop2) %>%
+  dplyr::mutate(col = fct_inorder(as.factor(col)))
+sites$site_lump[duplicated(sites$site_lump)] <- ""
+
+```
+
+In the msp3 manuscript, we only included _lehilahytsara_ samples from an area that is well north of the published IUCN range of the species, and some of which were originally labelled as _mittermeieri_.
+
+So a question relevant to their (lack of) delimitation as species is what differentiation looks like when more southerly _lehilahytsara_ populations are also included.
+
+### 1. Maps
+
+The map below shows the distributions of _mittermeieri_ (green) and _lehilahytsara_ (blue). IUCN distibutions have a darker color and a solid contour line; hand-drawn estimated "additional" distributions (based on our sampling sites and forest cover) have a lighter color and dotted contour lines.
+
+```{r dist_map,  out.width = "400px"}
+fig_dist <- here('map/map_dist_inset.png')
+include_graphics(fig_dist)
+```
+
+The maps below shows the sites for which we have samples with RADseq data, colored by species (with remaining forest in the background).
+On the right, some sites that are very close to each other have been lumped together (e.g., "Anjiahely+" consists of "Anjiahely" and "Antsahabe") -- to avoid cluttering, I will use these lumped site names when visualizing PCA and ADMIXTURE results below.
+
+```{r site_map1,  out.width = "500px"}
+fig_dist <- here('map/map_sites_sp.png')
+include_graphics(fig_dist)
+```
+
+Based on locations and genetic differentiation (see results below), I have divided the _lehilahytsara_ samples into three "population groups": "lehi-north", "lehi-south", and "lehi-high" (highland plateau sites, which is only Ankafobe after filtering). See the sites maps below, now colored by population group.
+**For the msp3 paper, we only included _lehilahytsara_ samples from the "lehi-north" population group (Riamalandy and the Ambavala area).**
+
+```{r site_map2, out.width = "500px"}
+fig_dist <- here('map/map_sites_pop2.png')
+include_graphics(fig_dist)
+```
+
+Finally, here is a map simply showing sampling sites by population group, with vegetation types of remaining vegetation shown:
+
+```{r pop_map,  out.width = "600px"}
+fig_dist <- here('map/map_pops.png')
+include_graphics(fig_dist)
+```
+
+### 2. Some metadata on the samples with RADseq data
+Samples were genotyped with Stacks and then filtered using a fairly stringent filtering procedure which removes both sites and samples. In the tables below,
+the "pass" indicates samples that passed this filtering, and "fail" indicates samples that failed this filtering step. (Not all samples that "failed" this are useless though, given the stringency of the filtering.) I did not include the two or so samples from captive colonies.
+
+- **Number of samples by population group ("pop_group"):**
+```{r metadata_summary_1, results='show'}
+lookup %>%
+  group_by(pop_group, filtering) %>%
+  summarise(count = n()) %>%
+  pivot_wider(names_from = filtering, values_from = count) %>%
+  ungroup() %>%
+  mutate(total = fail + pass) %>%
+  select(pop_group, pass, fail, total) %>%
+  as.data.frame()
+```
+
+- **Number of samples by site:**
+```{r metadata_summary_2, results='show'}
+lookup %>%
+  group_by(site_short, filtering) %>%
+  summarise(count = n()) %>%
+  pivot_wider(names_from = filtering, values_from = count, values_fill = list(count = 0)) %>%
+  ungroup() %>%
+  mutate(total = fail + pass) %>%
+  merge(., select(pops, site_short, pop_group), by = 'site_short', all.x = TRUE) %>%
+  select(site_short, pass, fail, total, pop_group) %>%
+  as.data.frame()
+```
+
+- **List of all samples:**
+```{r metadata_summary_3, results='show'}
+lookup %>%
+  arrange(pop_group, site_lump, ID) %>%
+  select(ID, Sample_ID, sp, site_short, site_lump, pop_group, filtering)
+```
+
+### 3. Jordi's tree
+Here is part of Jordi's tree that he sent around a while ago. This seems to suggest that the main axis of differentiation is between _mittermeieri_ + "lehi-north" on one hand versus "lehi-south" on the other (note that no samples from "lehi-high" were included). At its most extreme, this could mean that one could in fact distinguish two species, but that "lehi-north" would just have to be included with _mittermeieri_, which would make our msp3 analyses for these two species ... a little off the mark.
+
+```{r jordi_tree,  out.width = "600px"}
+fig_tree <- here('figures/jordi/mittlehi_raxml_ed.png')
+include_graphics(fig_tree)
+```
+
+### 4. Splitstree
+Below is an annotated Splitstree network, with sites and population groups labelled. This is roughly in line with Jordi's tree, but it's fairly messy, and might rather suggest an isolation-by-distance (IBD) pattern that would show even less support for distinct groups if geographically intermediate populations were included.
+
+
+```{r splitstree,  out.width = "600px"}
+fig_splitstree <- here('analyses/splitstree/figures/mitleh.nooutgroup.mac3.FS6_fig.png')
+include_graphics(fig_splitstree)
+```
+
+### 5. ADMIXTURE
+Below is an ADMIXTURE plot showing cross-validation errors at different values of K.
+This suggests that the fit gets worse with a higher number of clusters, already slightly so going from K=1 -> K=2. So no support for two species.
+
+```{r admixture_1,  results = "hide", out.width = "500px"}
+## Libraries and scripts:
+library(gridExtra)
+library(grid)
+library(RColorBrewer)
+library(ggpubr)
+source(here("scripts/genscriptlink_lemurs/admixture/admixture_plot_fun.R"))
+
+## Setup:
+filedir <- here('analyses/admixture/output/')
+lookup <- lookup %>%
+  mutate(ID2 = sub(':m', ':', paste0(site_lump, ':', ID)),
+         pop2 = fct_relevel(pop2, pop2_order)) %>%
+  arrange(pop2) %>%
+  mutate(col_pop2 = fct_inorder(as.factor(col_pop2)))
+    
+## Colors:
+barcol_pal <- brewer.pal(name = 'Set2', n = 8)
+bgcol_pal <- levels(lookup$col_pop2)
+
+## Group labels:
+pop2_labs <- c(leh_N = 'lehi: north',
+               leh_S = 'lehi: south',
+               leh_hi = 'lehi: high',
+               mmit = 'mittermeieri')
+grouplab.labeller <- labeller(pop2 = pop2_labs)
+
+## CV-plot:
+kp <- k.plot(setID)
+print(kp)
+```
+
+Below is an ADMIXTURE plot with K=2, K=3, and K=4.
+At K=2, "lehi-north"" is grouped with _mittermeieri_, like in Jordi's tree.
+At K=3, "lehi-high" gets its own cluster.
+At K=4, each of the population groups gets its own cluster.
+
+```{r admixture_2, results = "hide", out.width = "750px"}
+## K-plots:
+k2 <- Qdf(setID, K = 2, sort_by = 'site_lump', inds_df = lookup) %>%
+  ggax.v(., indID.column = 'ID2', group.column = 'pop2',
+         barcols = barcol_pal, indlabs = FALSE, ylab = 'K=2',
+         grouplab.bgcol = bgcol_pal, grouplab.labeller = grouplab.labeller)
+k3 <- Qdf(setID, K = 3, sort_by = 'site_lump', inds_df = lookup) %>%
+  ggax.v(., indID.column = 'ID2', group.column = 'pop2',
+         barcols = barcol_pal, indlabs = FALSE, ylab = 'K=3',
+         grouplab.bgcol = bgcol_pal, grouplab.labeller = grouplab.labeller)
+k4 <- Qdf(setID, K = 4, sort_by = 'site_lump', inds_df = lookup) %>%
+  ggax.v(., indID.column = 'ID2', group.column = 'pop2',
+         barcols = barcol_pal, indlabs = TRUE, ylab = 'K=4',
+         grouplab.bgcol = bgcol_pal, grouplab.labeller = grouplab.labeller)
+
+p_admix <- ggarrange(k2, k3, k4,
+                     ncol = 1, nrow = 3, heights = c(0.4, 0.4, 1))
+print(p_admix)
+```
+
+### 5. PCA
+Below is a PCA plot, with ellipses around each (lumped) site, and a different point shape for each population group. The inset just shows colors by population group.
+I'd say these results are also consistent with a rough IBD pattern going from "lehi-south" -> "lehi-north"" -> _mittermeieri_, but with the highland population group relatively distinct. 
+
+```{r PCA, include = FALSE}
+## Prep:
+source(here('scripts/genscriptlink_lemurs/PCA/PCA_R_fun.R'))
+
+## Run PCA & process results:
+pca_raw <- snpgdsPCA(snps, autosome.only = FALSE, num.thread = 1)
+pca <- pca.process(pca_raw, lookup = lookup, subset.ID = 'all',
+                   pca.ID = paste0(setID, '_all')) %>%
+  mutate(pop2 = factor(pop2, levels = pop2_order)) %>%
+  arrange(pop2) %>%
+  mutate(col_pop2 = fct_inorder(as.factor(col_pop2)))
+eig <- data.frame(PC = 1:length(pca_raw$eigenval), eig = pca_raw$eigenval)
+eig <- eig[complete.cases(eig), ]
+
+## Main plot:
+p1 <- pcplot(pca, eigenvals = eig$eig, strokesize = 1,
+             xmin_buffer = 0.2, xmax_buffer = 0.1,
+             ymin_buffer = 0.2, ymax_buffer = 0.2,
+             shape.by = 'pop2', shape.by.name = 'Pop. group:',
+             shape.by.labs = pop2_labs, shapes = c(8, 15, 17, 18),
+             col.by = 'site_lump', axis_title_size = 14,
+             draw_boxes = TRUE, boxlabsize = 7) +
+  theme(plot.margin = margin(0.3, 0.6, 0.3, 0.3, "cm"),
+        legend.justification = "top",
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12, face = 'bold'))
+
+## Inset plot:
+p2 <- pcplot(pca, eigenvals = eig$eig, strokesize = 1,
+             xmin_buffer = 0.01, xmax_buffer = 0.01,
+             ymin_buffer = 0.35, ymax_buffer = 0.01,
+             col.by = 'pop_group', col.by.name = 'Pop. group:',
+             col.by.labs = levels(pca$pop_group), cols = levels(pca$col_pop2)) +
+  guides(color = guide_legend(nrow = 2)) +
+  labs(title = 'Color by pop. group:') +
+  theme(plot.title = element_text(size = 12, hjust = 0.5),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        legend.position = c(0.5, 0.1),
+        legend.text = element_text(size = 9),
+        legend.title = element_blank(),
+        legend.box.background = element_rect(colour = 'grey20', size = 1),
+        legend.margin = margin(c(0, 0, 0, 0)),
+        legend.spacing.y = unit(0, 'cm'),
+        legend.key.height = unit(0.15, 'cm'),
+        legend.box.spacing = unit(0, 'cm'),
+        legend.box.margin = margin(c(0, 0, 0, 0)),
+        plot.margin = margin(0.1, 0.2, 0, 0, "cm"))
+
+p_pca <- ggdraw() + draw_plot(p1) +
+  draw_plot(p2, x = 0.65, y = 0.02, width = 0.32, height = 0.45)
+```
+
+```{r PCA_plot, out.width = "750px"}
+print(p_pca)
+```
+
+### 7. Concluding, w/r/t/ the msp3 manuscript
+- This doesn't support two (or more) species, so in that sense we're on solid ground if we want to recommend to lump _mittermeieri_ and _lehilahytsara_ in the msp3 manuscript.
+- However, it is a bit of a problem that we only included _lehilahytsara_ from north of the published range -- for which it was a dubious call to include them with _lehilahytsara_ at all, when looking at all of this together. I guess this would give us a good "excuse" to not make a decision on their status in the msp3 manuscript. But if we state all of this plainly upfront in the revision, I do worry that the reviewers will consider the impact of the paper as reduced.
