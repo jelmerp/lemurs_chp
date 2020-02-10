@@ -1,6 +1,4 @@
-################################################################################
 #### SET-UP: ####
-################################################################################
 ## Libraries and scripts:
 library(tidyverse)
 library(here)
@@ -63,14 +61,12 @@ col_mit <- '#00CD00'
 focal_sp <- c('mleh', 'mmit')
 
 
-################################################################################
 #### LOAD AND PREPARE MAP DATA ####
-################################################################################
 ## Metadata files:
 sites_raw <- read.delim(infile_sites, as.is = TRUE) %>%
   dplyr::filter(sp %in% focal_sp) %>%
   dplyr::select(site, lat, lon, sp, species)
-pops <- read.delim(infile_pops, as.is = TRUE) %>%
+pops <- read.csv(infile_pops, as.is = TRUE) %>%
   dplyr::filter(sp %in% focal_sp) %>%
   dplyr::mutate(pop2 = ifelse(is.na(pop2), sp, pop2)) %>%
   dplyr::select(site, site_short, site_lump, pop2)
@@ -167,9 +163,7 @@ elev_mada <- readRDS(elev_cut_file) %>%
 #elev_mada_se <- st_intersection(elev_mada, mada_se_sf)
 
 
-################################################################################
 #### INSET MAP OF ALL OF MADA ####
-################################################################################
 #veg_labs <- c('humid lowland', 'humid montane', 'W. deciduous', 'dry', 'other')
 #veg_cols <- c('#440154FF', '#31688EFF', '#35B779FF', '#FDE725FF', 'grey50')
 #geom_sf(data = veg_all, aes(fill = vegetation), alpha = 1, lwd = 0) +
@@ -186,9 +180,7 @@ p_mad <- ggplot() +
 ggsave(paste0(out_map_base, 'mad.png'), p_mad, width = 8, height = 8)
 
 
-################################################################################
 #### CHP MAP WITH ELEVATION AND DISTRIBUTIONS ####
-################################################################################
 ## Plot:
 p_dist_raw <- ggplot() +
   geom_sf(data = elev_mada, aes(colour = value), alpha = 0.5) +
@@ -227,9 +219,7 @@ ggsave(paste0(out_map_base, 'dist_inset.png'), p_dist, width = 6, height = 8)
 system(paste0('xdg-open ', out_map_base, 'dist_inset.png'))
 
 
-################################################################################
 #### MAP WITH VEGETATION AND SAMPLING ####
-################################################################################
 ## Create dummy dataframe for forest-type legend:
 forest_type_chp <- c('humid_low', 'humid_mont', 'w_deciduous', 'other')
 veg_labs2 <- c('humid lowland', 'humid montane', 'W. deciduous', 'other')
@@ -284,9 +274,7 @@ ggsave(paste0(out_map_base, 'pops.png'), p_pops, width = 8, height = 8)
 #system(paste0('xdg-open ', out_map_base, 'pops.png'))
 
 
-################################################################################
 #### MAP WITH NAMED SAMPLING SITES - BY POPGROUP ####
-################################################################################
 ## Every site separate:
 p_sites_each <- ggplot() +
   geom_sf(data = veg_all, fill = 'olivedrab', alpha = 0.5, lwd = 0) +
@@ -340,9 +328,7 @@ ggsave(paste0(out_map_base, 'sites_pop2.png'), p_sites, width = 8, height = 7)
 system(paste0('xdg-open ', out_map_base, 'sites_pop2.png'))
 
 
-################################################################################
 #### MAP WITH NAMED SAMPLING SITES - BY SPECIES ####
-################################################################################
 ## Every site separate:
 p_sites_each_sp <- ggplot() +
   geom_sf(data = veg_all, fill = 'olivedrab', alpha = 0.5, lwd = 0) +
@@ -396,9 +382,7 @@ ggsave(paste0(out_map_base, 'sites_sp.png'), p_sites_sp, width = 8, height = 7)
 system(paste0('xdg-open ', out_map_base, 'sites_sp.png'))
 
 
-################################################################################
 ##### LEAFLET MAP ####
-################################################################################
 # mur <- mapview(dist_mur) # fill=NA
 # gan <- mapview(dist_gan)
 # mur + gan
