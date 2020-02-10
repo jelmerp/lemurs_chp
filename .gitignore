@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+seqdata/
+analyses/
+map/
+fig
+scripts/genomics_link
+metadata/
