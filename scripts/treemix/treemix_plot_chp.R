@@ -3,8 +3,8 @@
 ################################################################################
 ## Dir and scripts:
 setwd('/home/jelmer/Dropbox/sc_lemurs/proj/sisp/analyses/treemix/')
-source('/home/jelmer/Dropbox/sc_lemurs/scripts/treemix/treemix_plotting_funcs.R') # Script that comes with Treemix
-source('/home/jelmer/Dropbox/sc_lemurs/scripts/treemix/treemix_plot_fun.R') # My script
+source('/home/jelmer/Dropbox/scripts/genomics/treemix/treemix_plotting_funcs.R') # Script that comes with Treemix
+source('/home/jelmer/Dropbox/scripts/genomics/treemix/treemix_plot_fun.R') # My script
 
 ## Packages:
 library(tidyverse)

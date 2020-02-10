@@ -1,6 +1,4 @@
-################################################################################
-#### SET-UP ####
-################################################################################
+#### SET-UP --------------------------------------------------------------------
 ## Scripts and libraries:
 library(here)
 library(tidyverse)
@@ -59,9 +57,7 @@ lookup <- lookup_raw %>%
   mutate(col = fct_inorder(col))
 
 
-################################################################################
-#### INDIVIDUAL PLOTS ####
-################################################################################
+#### INDIVIDUAL PLOTS ----------------------------------------------------------
 ## Bar and panel background colours:
 barcol_pal <- brewer.pal(name = 'Set2', n = 8)
 bgcol_pal <- levels(lookup$col)
@@ -87,7 +83,7 @@ k4 <- Qdf(setID, K = 4, sort_by = 'site_lump', inds_df = lookup) %>%
          grouplab.bgcol = bgcol_pal, grouplab.labeller = grouplab.labeller)
 
 
-#### COMBINE PLOTS #############################################################
+#### COMBINE PLOTS -------------------------------------------------------------
 p_admix <- ggarrange(k2, k3, k4,
                      ncol = 1, nrow = 3, heights = c(0.4, 0.4, 0.95))
 
