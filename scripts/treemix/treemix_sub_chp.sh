@@ -19,7 +19,7 @@ MAXMIG=10
 TREEMIX_DIR=/datacommons/yoderlab/users/jelmer/proj/sisp/analyses/treemix/
 INDS_METADATA=/datacommons/yoderlab/users/jelmer/proj/radseq/metadata/lookup_IDshort.txt
 SELECT_BY_COLUMN="species.short"
-SCR_TREEMIX=/datacommons/yoderlab/users/jelmer/scripts/treemix/treemix_pip.sh
+SCR_TREEMIX=/datacommons/yoderlab/users/jelmer/scripts/genomics/treemix/treemix_pip.sh
 #ROOT=none
 
 for FILE_ID in ${FILE_IDS[@]}
@@ -33,7 +33,7 @@ done
 	
 ################################################################################
 # rsync -avr --no-perms /home/jelmer/Dropbox/sc_lemurs/proj/sisp/scripts/ jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/proj/sisp/scripts/
-# rsync -avr --no-perms /home/jelmer/Dropbox/sc_lemurs/scripts/ jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/scripts/
+# rsync -avr --no-perms /home/jelmer/Dropbox/scripts/genomics/ jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/scripts/genomics/
 
 # rsync -avr /home/jelmer/Dropbox/sc_lemurs/proj/radseq/metadata/ jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/proj/radseq/metadata/
 # rsync -avr /home/jelmer/Dropbox/sc_lemurs/proj/sisp/metadata/* jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/proj/sisp/metadata/
@@ -50,7 +50,7 @@ ROOT=mgri
 for FILE_ID in ${FILE_IDS[@]}
 do
 	echo $FILE_ID
-	/datacommons/yoderlab/users/jelmer/scripts/treemix/treemix_pip.sh \
+	/datacommons/yoderlab/users/jelmer/scripts/genomics/treemix/treemix_pip.sh \
 	$FILE_ID $VCF_DIR $PREP_INPUT $MINMIG $MAXMIG $ROOT $TREEMIX_DIR $INDS_METADATA $SELECT_BY_COLUMN
 done
 
@@ -60,7 +60,7 @@ ROOT=mmur
 for FILE_ID in ${FILE_IDS[@]}
 do
 	echo $FILE_ID
-	/datacommons/yoderlab/users/jelmer/scripts/treemix/treemix_pip.sh \
+	/datacommons/yoderlab/users/jelmer/scripts/genomics/treemix/treemix_pip.sh \
 	$FILE_ID $VCF_DIR $PREP_INPUT $MINMIG $MAXMIG $ROOT $TREEMIX_DIR $INDS_METADATA $SELECT_BY_COLUMN
 done
 
@@ -70,6 +70,6 @@ ROOT=mmyo
 for FILE_ID in ${FILE_IDS[@]}
 do
 	echo "#### File ID: $FILE_ID"
-	/datacommons/yoderlab/users/jelmer/scripts/treemix/treemix_pip.sh \
+	/datacommons/yoderlab/users/jelmer/scripts/genomics/treemix/treemix_pip.sh \
 	$FILE_ID $VCF_DIR $PREP_INPUT $MINMIG $MAXMIG $ROOT $TREEMIX_DIR $INDS_METADATA $SELECT_BY_COLUMN
 done

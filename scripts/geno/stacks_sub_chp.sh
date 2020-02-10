@@ -1,6 +1,6 @@
 ## General options:
 STACKSDIR=/datacommons/yoderlab/users/jelmer/proj/chp/geno/stacks/
-SCR_PIP=/datacommons/yoderlab/users/jelmer/scripts/geno/stacks/stacks_pip.sh
+SCR_PIP=/datacommons/yoderlab/users/jelmer/scripts/genomics/geno/stacks/stacks_pip.sh
 LOOKUP=/datacommons/yoderlab/users/jelmer/proj/radseq/metadata/lookup_IDshort.txt
 BAMDIR=/datacommons/yoderlab/data/radseq/bam/map2mmur/final_merged/
 BAMSUFFIX=".sort.MQ30.dedup.bam"
@@ -48,11 +48,11 @@ $SCR_PIP $GSTACKS_ID $POPSTACKS_ID $FASTA_ID $STACKSDIR $BAMDIR $BAMSUFFIX \
 	
 ################################################################################
 ################################################################################
-rsync -avr --no-perms /home/jelmer/Dropbox/sc_lemurs/scripts/ jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/scripts/
+rsync -avr --no-perms /home/jelmer/Dropbox/scripts/genomics/ jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/scripts/genomics/
 rsync -avr --no-perms /home/jelmer/Dropbox/sc_lemurs/proj/radseq/metadata/ jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/proj/radseq/metadata/
 rsync -avr --no-perms /home/jelmer/Dropbox/sc_lemurs/proj/chp/metadata/ jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/proj/chp/metadata/
 
-
+rsync -avr --no-perms jwp37@dcc-slogin-02.oit.duke.edu:/datacommons/yoderlab/users/jelmer/proj/chp/geno/stacks/mitleh/*stats.txt /home/jelmer/Dropbox/sc_lemurs/proj/chp/analyses/QC/
 
 ################################################################################
 #vcftools --gzvcf $VCF --missing-indv

@@ -22,7 +22,7 @@ do
 	#FILE_ID=mitleh.singleoutgroup.mac3.FS7
 	echo -e "\n#### File ID: $FILE_ID"
 	sbatch -p yoderlab,common,scavenger --mem=${MEM}G -o slurm.splitstree.pip.$FILE_ID \
-	/datacommons/yoderlab/users/jelmer/scripts/splitstree/splitstree_pip.sh $FILE_ID $VCF_DIR $FASTA_DIR $NEXUS_DIR $OUTDIR $MEM
+	/datacommons/yoderlab/users/jelmer/scripts/genomics/splitstree/splitstree_pip.sh $FILE_ID $VCF_DIR $FASTA_DIR $NEXUS_DIR $OUTDIR $MEM
 done
 
 
